@@ -54,7 +54,7 @@ class TVL1OF(nn.Module):
             gradu2 = self.grad(u[:, 1, :, :].unsqueeze(1))
             p1 = (p1 + self.tau / self.theta * gradu1) / (
                     1 + self.tau / self.theta * torch.sum(torch.abs(gradu1)))
-            p2 = (p1 + self.tau / self.theta * gradu2) / (
+            p2 = (p2 + self.tau / self.theta * gradu2) / (
                     1 + self.tau / self.theta * torch.sum(torch.abs(gradu2)))
         return u
 
