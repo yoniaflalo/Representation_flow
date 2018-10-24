@@ -15,11 +15,11 @@ class TVL1OF(nn.Module):
         self.grad_y = torch.tensor([[1.0, 2.0, 1.0], [0.0, 0.0, 0.0], [-1.0, -2.0, -1.0]], requires_grad=False)
         self.grad_ = torch.stack([self.grad_x, self.grad_y])
         if is_w_trainable:
-            self.wx = nn.Parameter(torch.tensor([[1.0, 1.0]]))
-            self.wy = nn.Parameter((torch.tensor([[1.0], [1.0]])))
+            self.wx = nn.Parameter(torch.tensor([[-1.0, 1.0]]))
+            self.wy = nn.Parameter((torch.tensor([[-1.0], [1.0]])))
         else:
-            self.wx = torch.tensor([[1.0, 1.0]], requires_grad=False)
-            self.wy = torch.tensor([[1.0], [1.0]], requires_grad=False)
+            self.wx = torch.tensor([[-1.0, 1.0]], requires_grad=False)
+            self.wy = torch.tensor([[-1.0], [1.0]], requires_grad=False)
         self.lambda_ = nn.Parameter(torch.tensor([lambda_]))
         self.tau = nn.Parameter(torch.tensor([tau]))
         self.theta = nn.Parameter(torch.tensor([theta]))
