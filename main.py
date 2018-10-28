@@ -79,17 +79,17 @@ class TVL1OF(nn.Module):
 
 ratio = 1
 
-path = "eval-data/Wooden/"
+path = "eval-data/Dumptruck/"
 list_files = os.listdir(path)
 list_files = [os.path.join(path, file) for file in list_files if file.endswith(".png")]
 list_files.sort()
 # list_files = list_files[0:2]
 images = [Image.open(f).convert('L') for f in list_files]
 images = [np.array(im.resize([int(im.size[0] * ratio), int(im.size[1] * ratio)])) for im in images]
-x = torch.stack([torch.tensor(im) for im in images]).float()/255.0
+x = torch.stack([torch.tensor(im) for im in images]).float() / 255.0
 
 x = torch.stack([torch.stack([x[i, :, :], x[i + 1, :, :]]) for i in range(x.shape[0] - 1)])
-t = TVL1OF(size_in=images[0].shape, num_iter=100, lambda_=50.0, tau=0.25, theta=0.001)
+t = TVL1OF(size_in=images[0].shape, num_iter=50, lambda_=50.0, tau=0.25, theta=0.0001)
 a = t(x)
 tv = a.data.cpu().numpy()
 for i in range(tv.shape[0]):
