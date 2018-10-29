@@ -22,20 +22,32 @@ class TVL1OF(nn.Module):
         self.grad_y = 1 / 6.0 * torch.tensor([[-1.0, -2.0, -1.0], [0.0, 0.0, 0.0], [1.0, 2.0, 1.0]],
                                              requires_grad=False)
         if is_w_trainable:
-            self.wx = 0.5 * nn.Parameter(torch.tensor([[-1.0, 0.0, 1.0]]))
-            self.wy = 0.5 * nn.Parameter((torch.tensor([[-1.0], [0.0], [1.0]])))
+            self.wx = nn.Parameter(torch.tensor([[-1.0, 1.0, 0.0]]))
+            self.wy = nn.Parameter((torch.tensor([[-1.0], [1.0], [0.0]])))
+
         else:
-            self.wx = 0.5 * torch.tensor([[-1.0, 0.0, 1.0]], requires_grad=False)
-            self.wy = 0.5 * torch.tensor([[-1.0], [0.0], [1.0]], requires_grad=False)
+            self.wx = 0.5 * torch.tensor([[-1.0, 1.0, 0.0]], requires_grad=False)
+            self.wy = 0.5 * torch.tensor([[-1.0], [1.0], [0.0]], requires_grad=False)
+
+        self.grad_x_u = torch.tensor([[0.0, 0.0, 0.0], [0.0, -1.0, 1.0], [0.0, 0.0, 0.0]],
+                                             requires_grad=False)
+        self.grad_y_u = torch.tensor([[0.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 1.0, 0.0]],
+                                             requires_grad=False)
 
         self.grad_ = torch.stack([self.grad_x, self.grad_y])
+        self.grad_u_ = torch.stack([self.grad_x_u, self.grad_y_u])
         self.grad = nn.Conv2d(in_channels=1, out_channels=2, kernel_size=[3, 3], padding=1, bias=False)
+        self.grad_u = nn.Conv2d(in_channels=1, out_channels=2, kernel_size=[3, 3], padding=1, bias=False)
+        self.div_x = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=[1, 3], padding=[0, 1], bias=False)
+        self.div_y = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=[3, 1], padding=[1, 0], bias=False)
         self.div_x = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=[1, 3], padding=[0, 1], bias=False)
         self.div_y = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=[3, 1], padding=[1, 0], bias=False)
         self.div_x.weight.data = self.wx.unsqueeze(0).unsqueeze(0)
         self.div_y.weight.data = self.wy.unsqueeze(0).unsqueeze(0)
         self.grad.weight.data = self.grad_.unsqueeze(1)
         self.grad.weight.requires_grad = False
+        self.grad_u.weight.data = self.grad_u_.unsqueeze(1)
+        self.grad_u.weight.requires_grad = False
 
     def forward(self, x):
         epsilon = 1e-8
@@ -48,7 +60,7 @@ class TVL1OF(nn.Module):
         grad_im = self.grad(x[:, 1:, :, :])
         norm_grad = torch.sum(grad_im * grad_im, dim=1).unsqueeze(1) + epsilon
         for i in range(self.num_iter):
-            u = torch.nn.AvgPool2d(3, stride=1, padding=1)(u)
+            # u = torch.nn.AvgPool2d(3, stride=1, padding=1)(u)
             rho = rho_c + torch.sum(grad_im * u, dim=1).unsqueeze(1)
             th = self.theta * self.lambda_ * norm_grad
             v = u - (torch.abs(rho) < th).float() * rho * grad_im / norm_grad - (
@@ -57,8 +69,8 @@ class TVL1OF(nn.Module):
                 p1[:, 1, :, :].unsqueeze(1))).squeeze()
             u[:, 1, :, :] = v[:, 1, :, :] + self.theta * (self.div_x(p2[:, 0, :, :].unsqueeze(1)) + self.div_y(
                 p2[:, 1, :, :].unsqueeze(1))).squeeze()
-            gradu1 = self.grad(u[:, 0, :, :].unsqueeze(1))
-            gradu2 = self.grad(u[:, 1, :, :].unsqueeze(1))
+            gradu2 = self.grad_u(u[:, 1, :, :].unsqueeze(1))
+            gradu1 = self.grad_u(u[:, 0, :, :].unsqueeze(1))
             p1 = (p1 + self.tau / self.theta * gradu1) / (
                     1 + self.tau / self.theta * torch.sum(torch.abs(gradu1), dim=1).unsqueeze(1))
             p2 = (p2 + self.tau / self.theta * gradu2) / (
@@ -66,22 +78,23 @@ class TVL1OF(nn.Module):
             rho = rho_c + torch.sum(grad_im * u, dim=1).unsqueeze(1)
             err = torch.sum(torch.abs(self.lambda_ * rho) + torch.abs(gradu1) + torch.abs(gradu2))
             print(err.data.cpu().numpy())
-        return u
+        return torch.nn.AvgPool2d(3, stride=1, padding=1)(u)
 
 
-ratio = 1
+ratio = 0.5
 
-path = "eval-data/Basketball/"
+path = "eval-data/Mequon/"
 list_files = os.listdir(path)
 list_files = [os.path.join(path, file) for file in list_files if file.endswith(".png")]
 list_files.sort()
-list_files = list_files[1:3]
+list_files = list_files[0:2]
 images = [Image.open(f).convert('L') for f in list_files]
 images = [np.array(im.resize([int(im.size[0] * ratio), int(im.size[1] * ratio)])) for im in images]
 x = torch.stack([torch.tensor(im) for im in images]).float()  # / 255.0
 
 x = torch.stack([torch.stack([x[i, :, :], x[i + 1, :, :]]) for i in range(x.shape[0] - 1)])
-t = TVL1OF(size_in=images[0].shape, num_iter=50, lambda_=0.005, tau=0.25, theta=0.0003)
+x=torch.nn.AvgPool2d(3, stride=1, padding=1)(x)
+t = TVL1OF(size_in=images[0].shape, num_iter=100, lambda_=0.03, tau=0.25, theta=0.3)
 a = t(x)
 tv = a.data.cpu().numpy()
 for i in range(tv.shape[0]):
