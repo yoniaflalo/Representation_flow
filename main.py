@@ -7,7 +7,7 @@ import os
 
 
 class TVL1OF(nn.Module):
-    def __init__(self, size_in, num_iter, lambda_, tau, theta, is_w_trainable=True):
+    def __init__(self, size_in, num_iter=20, lambda_=0.01, tau=0.25, theta=0.3, is_w_trainable=True):
         self.ch_in = 1
         super(TVL1OF, self).__init__()
         self.size_y = size_in[0]
@@ -16,7 +16,6 @@ class TVL1OF(nn.Module):
         self.lambda_ = nn.Parameter(torch.tensor([lambda_]))
         self.tau = nn.Parameter(torch.tensor([tau]))
         self.theta = nn.Parameter(torch.tensor([theta]))
-
         self.grad_x = 1 / 6.0 * torch.tensor([[-1.0, 0.0, 1.0], [-2.0, 0.0, 2.0], [-1.0, 0.0, 1.0]],
                                              requires_grad=False)
         self.grad_y = 1 / 6.0 * torch.tensor([[-1.0, -2.0, -1.0], [0.0, 0.0, 0.0], [1.0, 2.0, 1.0]],
@@ -24,16 +23,13 @@ class TVL1OF(nn.Module):
         if is_w_trainable:
             self.wx = nn.Parameter(torch.tensor([[-1.0, 1.0, 0.0]]))
             self.wy = nn.Parameter((torch.tensor([[-1.0], [1.0], [0.0]])))
-
         else:
             self.wx = 0.5 * torch.tensor([[-1.0, 1.0, 0.0]], requires_grad=False)
             self.wy = 0.5 * torch.tensor([[-1.0], [1.0], [0.0]], requires_grad=False)
-
         self.grad_x_u = torch.tensor([[0.0, 0.0, 0.0], [0.0, -1.0, 1.0], [0.0, 0.0, 0.0]],
                                              requires_grad=False)
         self.grad_y_u = torch.tensor([[0.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 1.0, 0.0]],
                                              requires_grad=False)
-
         self.grad_ = torch.stack([self.grad_x, self.grad_y])
         self.grad_u_ = torch.stack([self.grad_x_u, self.grad_y_u])
         self.grad = nn.Conv2d(in_channels=1, out_channels=2, kernel_size=[3, 3], padding=1, bias=False)
@@ -81,20 +77,19 @@ class TVL1OF(nn.Module):
         return torch.nn.AvgPool2d(3, stride=1, padding=1)(u)
 
 
-ratio = 0.5
+ratio = 1
 
-path = "eval-data/Mequon/"
+path = "eval-data/Basketball/"
 list_files = os.listdir(path)
 list_files = [os.path.join(path, file) for file in list_files if file.endswith(".png")]
 list_files.sort()
-list_files = list_files[0:2]
+# list_files = list_files[0:2]
 images = [Image.open(f).convert('L') for f in list_files]
 images = [np.array(im.resize([int(im.size[0] * ratio), int(im.size[1] * ratio)])) for im in images]
 x = torch.stack([torch.tensor(im) for im in images]).float()  # / 255.0
-
 x = torch.stack([torch.stack([x[i, :, :], x[i + 1, :, :]]) for i in range(x.shape[0] - 1)])
 x=torch.nn.AvgPool2d(3, stride=1, padding=1)(x)
-t = TVL1OF(size_in=images[0].shape, num_iter=100, lambda_=0.03, tau=0.25, theta=0.3)
+t = TVL1OF(size_in=images[0].shape, num_iter=200)
 a = t(x)
 tv = a.data.cpu().numpy()
 for i in range(tv.shape[0]):
