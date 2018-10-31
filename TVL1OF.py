@@ -3,10 +3,11 @@ import torch
 
 
 class TVL1OF(nn.Module):
-    def __init__(self, num_iter=20, lambda_=0.02, tau=0.25, theta=0.1, is_w_trainable=True):
+    def __init__(self, num_iter=20, lambda_=0.02, tau=0.25, theta=0.1, is_w_trainable=True, verbose = False):
         self.ch_in = 1
         super(TVL1OF, self).__init__()
         self.num_iter = num_iter
+        self.verbose =verbose
         self.lambda_ = nn.Parameter(torch.tensor([lambda_]))
         self.tau = nn.Parameter(torch.tensor([tau]))
         self.theta = nn.Parameter(torch.tensor([theta]))
@@ -78,7 +79,8 @@ class TVL1OF(nn.Module):
                     1 + self.tau / self.theta * torch.sum(torch.abs(gradu2), dim=1).unsqueeze(1))
             rho = rho_c + torch.sum(grad_im * u, dim=1).unsqueeze(1)
             err = torch.sum(torch.abs(self.lambda_ * rho) + torch.abs(gradu1) + torch.abs(gradu2))
-            print(err.data.cpu().numpy())
+            if self.verbose:
+                print(f"Error : {err.data.cpu().numpy()}")
         u = u.reshape(batch_size, num_channels, 2, size_y, size_x)
         # u = torch.nn.AvgPool2d(3, stride=1, padding=1)(u)
 

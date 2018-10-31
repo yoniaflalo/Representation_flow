@@ -16,7 +16,7 @@ list_files = [os.path.join(path, file) for file in list_files if file.endswith("
 list_files.sort()
 list_files = list_files[0:5]
 
-test_rf = 1
+test_rf = 0
 if test_rf:
     imagesRGB = [Image.open(f) for f in list_files]
     imagesRGB = [np.array(im.resize([256, 256])) for im in imagesRGB]
