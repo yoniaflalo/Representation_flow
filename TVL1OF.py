@@ -23,9 +23,9 @@ class TVL1OF(nn.Module):
             self.wx = 0.5 * torch.tensor([[-1.0, 1.0, 0.0]], requires_grad=False)
             self.wy = 0.5 * torch.tensor([[-1.0], [1.0], [0.0]], requires_grad=False)
         self.grad_x_u = torch.tensor([[0.0, 0.0, 0.0], [0.0, -1.0, 1.0], [0.0, 0.0, 0.0]],
-                                             requires_grad=False)
+                                     requires_grad=False)
         self.grad_y_u = torch.tensor([[0.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 1.0, 0.0]],
-                                             requires_grad=False)
+                                     requires_grad=False)
         self.grad_ = torch.stack([self.grad_x, self.grad_y])
         self.grad_u_ = torch.stack([self.grad_x_u, self.grad_y_u])
         self.grad = nn.Conv2d(in_channels=1, out_channels=2, kernel_size=[3, 3], padding=1, bias=False)
@@ -42,17 +42,32 @@ class TVL1OF(nn.Module):
         self.grad_u.weight.requires_grad = False
 
     def forward(self, x):
+        shape = x.shape
+        if not len(shape) == 5:
+            raise NotImplementedError
+        num_frame = shape[0]
+        if not num_frame == 2:
+            raise NotImplementedError
+
+        batch_size = shape[1]
+        num_channels = shape[2]
+        m = shape[3]
+        n = shape[4]
+        xx1 = x[0, ...]
+        xx2 = x[1, ...]
+        xx1 = xx1.reshape([batch_size * num_channels, m, n])
+        xx2 = xx2.reshape([batch_size * num_channels, m, n])
+        xx = torch.stack([xx1, xx2], dim=1)
         epsilon = 1e-8
-        num_batch = x.shape[0]
+        num_batch = xx.shape[0]
         p1 = torch.zeros([num_batch, 2, self.size_y, self.size_x])
         p2 = torch.zeros([num_batch, 2, self.size_y, self.size_x])
         u = torch.zeros([num_batch, 2, self.size_y, self.size_x])
         v = torch.zeros([num_batch, 2, self.size_y, self.size_x])
-        rho_c = (x[:, 1, :, :] - x[:, 0, :, :]).unsqueeze(1)
-        grad_im = self.grad(x[:, 1:, :, :])
+        rho_c = (xx[:, 1, :, :] - xx[:, 0, :, :]).unsqueeze(1)
+        grad_im = self.grad(xx[:, 1:, :, :])
         norm_grad = torch.sum(grad_im * grad_im, dim=1).unsqueeze(1) + epsilon
         for i in range(self.num_iter):
-            # u = torch.nn.AvgPool2d(3, stride=1, padding=1)(u)
             rho = rho_c + torch.sum(grad_im * u, dim=1).unsqueeze(1)
             th = self.theta * self.lambda_ * norm_grad
             v = u - (torch.abs(rho) < th).float() * rho * grad_im / norm_grad - (
@@ -70,4 +85,6 @@ class TVL1OF(nn.Module):
             rho = rho_c + torch.sum(grad_im * u, dim=1).unsqueeze(1)
             err = torch.sum(torch.abs(self.lambda_ * rho) + torch.abs(gradu1) + torch.abs(gradu2))
             print(err.data.cpu().numpy())
-        return torch.nn.AvgPool2d(3, stride=1, padding=1)(u)
+        u = u.reshape(batch_size, num_channels, 2, m, n)
+        # u = torch.nn.AvgPool2d(3, stride=1, padding=1)(u)
+        return u

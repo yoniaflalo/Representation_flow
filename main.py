@@ -6,23 +6,28 @@ import torch
 
 from TVL1OF import *
 
-
-
-ratio = 1
+ratio = 0.5
 
 path = "eval-data/Mequon/"
 list_files = os.listdir(path)
 list_files = [os.path.join(path, file) for file in list_files if file.endswith(".png")]
 list_files.sort()
-list_files = list_files[0:2]
+list_files = list_files[0:5]
 images = [Image.open(f).convert('L') for f in list_files]
 images = [np.array(im.resize([int(im.size[0] * ratio), int(im.size[1] * ratio)])) for im in images]
 x = torch.stack([torch.tensor(im) for im in images]).float()  # / 255.0
-x = torch.stack([torch.stack([x[i, :, :], x[i + 1, :, :]]) for i in range(x.shape[0] - 1)])
-x=torch.nn.AvgPool2d(3, stride=1, padding=1)(x)
+xx = torch.zeros([2, 2, int((x.shape[0] - 1) / 2), x.shape[1], x.shape[2]])
+xx[0, 0, ...] = x[0:2, :, :]
+xx[0, 1, ...] = x[2:4, :, :]
+xx[1, 0, ...] = x[1:3, :, :]
+xx[1, 1, ...] = x[3:, :, :]
+# x = torch.stack([torch.stack([x[i, :, :], x[i + 1, :, :]]) for i in range(x.shape[0] - 1)])
+x = xx
+# x=torch.nn.AvgPool2d(3, stride=1, padding=1)(x)
 t = TVL1OF(size_in=images[0].shape, num_iter=100)
 a = t(x)
 tv = a.data.cpu().numpy()
+tv = tv.reshape(tv.shape[0] * tv.shape[1], tv.shape[2], tv.shape[3], tv.shape[4])
 for i in range(tv.shape[0]):
     tv1 = tv[i, 0, :, :].squeeze()
     tv2 = tv[i, 1, :, :].squeeze()
