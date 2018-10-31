@@ -16,16 +16,14 @@ list_files = list_files[0:5]
 images = [Image.open(f).convert('L') for f in list_files]
 images = [np.array(im.resize([int(im.size[0] * ratio), int(im.size[1] * ratio)])) for im in images]
 x = torch.stack([torch.tensor(im) for im in images]).float()  # / 255.0
-xx = torch.zeros([2, 2, int((x.shape[0] - 1) / 2), x.shape[1], x.shape[2]])
-xx[0, 0, ...] = x[0:2, :, :]
-xx[0, 1, ...] = x[2:4, :, :]
-xx[1, 0, ...] = x[1:3, :, :]
-xx[1, 1, ...] = x[3:, :, :]
-# x = torch.stack([torch.stack([x[i, :, :], x[i + 1, :, :]]) for i in range(x.shape[0] - 1)])
-x = xx
-# x=torch.nn.AvgPool2d(3, stride=1, padding=1)(x)
+x1 = torch.zeros([2, int((x.shape[0] - 1) / 2), x.shape[1], x.shape[2]])
+x2 = torch.zeros([2, int((x.shape[0] - 1) / 2), x.shape[1], x.shape[2]])
+x1[0, ...] = x[0:2, :, :]
+x1[1, ...] = x[2:4, :, :]
+x2[0, ...] = x[1:3, :, :]
+x2[1, ...] = x[3:, :, :]
 t = TVL1OF(size_in=images[0].shape, num_iter=100)
-a = t(x)
+a = t(x1, x2)
 tv = a.data.cpu().numpy()
 tv = tv.reshape(tv.shape[0] * tv.shape[1], tv.shape[2], tv.shape[3], tv.shape[4])
 for i in range(tv.shape[0]):

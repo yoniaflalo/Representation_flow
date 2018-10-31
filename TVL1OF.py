@@ -41,20 +41,16 @@ class TVL1OF(nn.Module):
         self.grad_u.weight.data = self.grad_u_.unsqueeze(1)
         self.grad_u.weight.requires_grad = False
 
-    def forward(self, x):
-        shape = x.shape
-        if not len(shape) == 5:
+    def forward(self, x1, x2):
+        if not x1.shape == x2.shape:
             raise NotImplementedError
-        num_frame = shape[0]
-        if not num_frame == 2:
-            raise NotImplementedError
-
-        batch_size = shape[1]
-        num_channels = shape[2]
-        m = shape[3]
-        n = shape[4]
-        xx1 = x[0, ...]
-        xx2 = x[1, ...]
+        shape = x1.shape
+        batch_size = shape[0]
+        num_channels = shape[1]
+        m = shape[2]
+        n = shape[3]
+        xx1 = x1
+        xx2 = x2
         xx1 = xx1.reshape([batch_size * num_channels, m, n])
         xx2 = xx2.reshape([batch_size * num_channels, m, n])
         xx = torch.stack([xx1, xx2], dim=1)
