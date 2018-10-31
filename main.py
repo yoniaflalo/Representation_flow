@@ -22,7 +22,7 @@ x1[0, ...] = x[0:2, :, :]
 x1[1, ...] = x[2:4, :, :]
 x2[0, ...] = x[1:3, :, :]
 x2[1, ...] = x[3:, :, :]
-t = TVL1OF(size_in=images[0].shape, num_iter=100)
+t = TVL1OF(num_iter=100)
 a = t(x1, x2)
 tv = a.data.cpu().numpy()
 tv = tv.reshape(tv.shape[0] * tv.shape[1], tv.shape[2], tv.shape[3], tv.shape[4])

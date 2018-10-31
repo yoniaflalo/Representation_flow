@@ -3,11 +3,9 @@ import torch
 
 
 class TVL1OF(nn.Module):
-    def __init__(self, size_in, num_iter=20, lambda_=0.02, tau=0.25, theta=0.1, is_w_trainable=True):
+    def __init__(self, num_iter=20, lambda_=0.02, tau=0.25, theta=0.1, is_w_trainable=True):
         self.ch_in = 1
         super(TVL1OF, self).__init__()
-        self.size_y = size_in[0]
-        self.size_x = size_in[1]
         self.num_iter = num_iter
         self.lambda_ = nn.Parameter(torch.tensor([lambda_]))
         self.tau = nn.Parameter(torch.tensor([tau]))
@@ -47,19 +45,19 @@ class TVL1OF(nn.Module):
         shape = x1.shape
         batch_size = shape[0]
         num_channels = shape[1]
-        m = shape[2]
-        n = shape[3]
+        size_y = shape[2]
+        size_x = shape[3]
         xx1 = x1
         xx2 = x2
-        xx1 = xx1.reshape([batch_size * num_channels, m, n])
-        xx2 = xx2.reshape([batch_size * num_channels, m, n])
+        xx1 = xx1.reshape([batch_size * num_channels, size_y, size_x])
+        xx2 = xx2.reshape([batch_size * num_channels, size_y, size_x])
         xx = torch.stack([xx1, xx2], dim=1)
         epsilon = 1e-8
         num_batch = xx.shape[0]
-        p1 = torch.zeros([num_batch, 2, self.size_y, self.size_x])
-        p2 = torch.zeros([num_batch, 2, self.size_y, self.size_x])
-        u = torch.zeros([num_batch, 2, self.size_y, self.size_x])
-        v = torch.zeros([num_batch, 2, self.size_y, self.size_x])
+        p1 = torch.zeros([num_batch, 2, size_y, size_x])
+        p2 = torch.zeros([num_batch, 2, size_y, size_x])
+        u = torch.zeros([num_batch, 2, size_y, size_x])
+        v = torch.zeros([num_batch, 2, size_y, size_x])
         rho_c = (xx[:, 1, :, :] - xx[:, 0, :, :]).unsqueeze(1)
         grad_im = self.grad(xx[:, 1:, :, :])
         norm_grad = torch.sum(grad_im * grad_im, dim=1).unsqueeze(1) + epsilon
@@ -81,6 +79,6 @@ class TVL1OF(nn.Module):
             rho = rho_c + torch.sum(grad_im * u, dim=1).unsqueeze(1)
             err = torch.sum(torch.abs(self.lambda_ * rho) + torch.abs(gradu1) + torch.abs(gradu2))
             print(err.data.cpu().numpy())
-        u = u.reshape(batch_size, num_channels, 2, m, n)
+        u = u.reshape(batch_size, num_channels, 2, size_y, size_x)
         # u = torch.nn.AvgPool2d(3, stride=1, padding=1)(u)
         return u
