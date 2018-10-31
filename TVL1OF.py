@@ -70,8 +70,8 @@ class TVL1OF(nn.Module):
                 p1[:, 1, :, :].unsqueeze(1))).squeeze()
             u[:, 1, :, :] = v[:, 1, :, :] + self.theta * (self.div_x(p2[:, 0, :, :].unsqueeze(1)) + self.div_y(
                 p2[:, 1, :, :].unsqueeze(1))).squeeze()
-            gradu2 = self.grad_u(u[:, 1, :, :].unsqueeze(1))
             gradu1 = self.grad_u(u[:, 0, :, :].unsqueeze(1))
+            gradu2 = self.grad_u(u[:, 1, :, :].unsqueeze(1))
             p1 = (p1 + self.tau / self.theta * gradu1) / (
                     1 + self.tau / self.theta * torch.sum(torch.abs(gradu1), dim=1).unsqueeze(1))
             p2 = (p2 + self.tau / self.theta * gradu2) / (
@@ -81,4 +81,5 @@ class TVL1OF(nn.Module):
             print(err.data.cpu().numpy())
         u = u.reshape(batch_size, num_channels, 2, size_y, size_x)
         # u = torch.nn.AvgPool2d(3, stride=1, padding=1)(u)
+
         return u

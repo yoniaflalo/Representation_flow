@@ -6,13 +6,24 @@ import torch
 
 from TVL1OF import *
 
+from Representation_flow import *
+
 ratio = 0.5
 
-path = "eval-data/Mequon/"
+path = "eval-data/Basketball/"
 list_files = os.listdir(path)
 list_files = [os.path.join(path, file) for file in list_files if file.endswith(".png")]
 list_files.sort()
 list_files = list_files[0:5]
+
+test_rf = 1
+if test_rf:
+    imagesRGB = [Image.open(f) for f in list_files]
+    imagesRGB = [np.array(im.resize([256, 256])) for im in imagesRGB]
+    xRGB = torch.stack([torch.tensor(im).transpose(0, 2) for im in imagesRGB]).float()
+    RF = Representation_flow(4)
+    f = RF(xRGB[0, ...].unsqueeze(0), xRGB[1, ...].unsqueeze(0), xRGB[2, ...].unsqueeze(0), xRGB[3, ...].unsqueeze(0))
+
 images = [Image.open(f).convert('L') for f in list_files]
 images = [np.array(im.resize([int(im.size[0] * ratio), int(im.size[1] * ratio)])) for im in images]
 x = torch.stack([torch.tensor(im) for im in images]).float()  # / 255.0
@@ -22,6 +33,7 @@ x1[0, ...] = x[0:2, :, :]
 x1[1, ...] = x[2:4, :, :]
 x2[0, ...] = x[1:3, :, :]
 x2[1, ...] = x[3:, :, :]
+
 t = TVL1OF(num_iter=100)
 a = t(x1, x2)
 tv = a.data.cpu().numpy()
