@@ -16,13 +16,16 @@ class Representation_flow(nn.Module):
             self.res_net_end = resnet34_end(num_classes)
             in_channels = 128
         self.TVL1OF = TVL1OF(num_iter=num_iter)
-
         out_channels = 32
         self.reduction_channel = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=1)
         self.expension_channel = nn.Conv2d(in_channels=4 * out_channels, out_channels=in_channels, kernel_size=3)
         self.conv_flow = nn.Conv2d(in_channels=2 * out_channels, out_channels=2 * out_channels, kernel_size=3)
 
-    def forward(self, x1, x2, x3, x4):
+    def forward(self, x):
+        x1 = x[:, 0, ...]
+        x2 = x[:, 1, ...]
+        x3 = x[:, 2, ...]
+        x4 = x[:, 3, ...]
         resnet1 = self.res_net_start(x1)
         resnet2 = self.res_net_start(x2)
         resnet3 = self.res_net_start(x3)
@@ -31,7 +34,6 @@ class Representation_flow(nn.Module):
         resnet2 = self.reduction_channel(resnet2)
         resnet3 = self.reduction_channel(resnet3)
         resnet4 = self.reduction_channel(resnet4)
-
         flow11 = self.TVL1OF(resnet1, resnet2)
         flow12 = self.TVL1OF(resnet3, resnet4)
         s = flow11.shape

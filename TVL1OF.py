@@ -3,11 +3,11 @@ import torch
 
 
 class TVL1OF(nn.Module):
-    def __init__(self, num_iter=20, lambda_=0.02, tau=0.25, theta=0.1, is_w_trainable=True, verbose = False):
+    def __init__(self, num_iter=20, lambda_=0.02, tau=0.25, theta=0.1, is_w_trainable=True, verbose=False):
         self.ch_in = 1
         super(TVL1OF, self).__init__()
         self.num_iter = num_iter
-        self.verbose =verbose
+        self.verbose = verbose
         self.lambda_ = nn.Parameter(torch.tensor([lambda_]))
         self.tau = nn.Parameter(torch.tensor([tau]))
         self.theta = nn.Parameter(torch.tensor([theta]))
@@ -43,22 +43,29 @@ class TVL1OF(nn.Module):
     def forward(self, x1, x2):
         if not x1.shape == x2.shape:
             raise NotImplementedError
+        epsilon = 1e-8
         shape = x1.shape
         batch_size = shape[0]
         num_channels = shape[1]
         size_y = shape[2]
         size_x = shape[3]
+        x1_min = x1.min(dim=-1, keepdim=True)[0].min(dim=-1, keepdim=True)[0]
+        x2_min = x2.min(dim=-1, keepdim=True)[0].min(dim=-1, keepdim=True)[0]
+        x1_max = x1.max(dim=-1, keepdim=True)[0].max(dim=-1, keepdim=True)[0]
+        x2_max = x2.max(dim=-1, keepdim=True)[0].max(dim=-1, keepdim=True)[0]
+        x1 = (x1 - x1_min) / (x1_max - x1_min + epsilon) * 255.0
+        x2 = (x2 - x2_min) / (x2_max - x2_min + epsilon) * 255.0
         xx1 = x1
         xx2 = x2
         xx1 = xx1.reshape([batch_size * num_channels, size_y, size_x])
         xx2 = xx2.reshape([batch_size * num_channels, size_y, size_x])
         xx = torch.stack([xx1, xx2], dim=1)
-        epsilon = 1e-8
         num_batch = xx.shape[0]
-        p1 = torch.zeros([num_batch, 2, size_y, size_x])
-        p2 = torch.zeros([num_batch, 2, size_y, size_x])
-        u = torch.zeros([num_batch, 2, size_y, size_x])
-        v = torch.zeros([num_batch, 2, size_y, size_x])
+        device = x1.device
+        p1 = torch.zeros([num_batch, 2, size_y, size_x], device=device)
+        p2 = torch.zeros([num_batch, 2, size_y, size_x], device=device)
+        u = torch.zeros([num_batch, 2, size_y, size_x], device=device)
+        v = torch.zeros([num_batch, 2, size_y, size_x], device=device)
         rho_c = (xx[:, 1, :, :] - xx[:, 0, :, :]).unsqueeze(1)
         grad_im = self.grad(xx[:, 1:, :, :])
         norm_grad = torch.sum(grad_im * grad_im, dim=1).unsqueeze(1) + epsilon
