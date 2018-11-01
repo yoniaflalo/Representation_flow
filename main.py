@@ -6,8 +6,8 @@ import time
 
 from Representation_flow import *
 
-ratio = 0.5
-
+ratio = 0.7
+cuda = torch.cuda.is_available()
 path = "eval-data/Army/"
 list_files = os.listdir(path)
 list_files = [os.path.join(path, file) for file in list_files if file.endswith(".png")]
@@ -20,10 +20,13 @@ if test_rf:
     imagesRGB = [np.array(im.resize([256, 256])) for im in imagesRGB]
     xRGB = torch.stack([torch.tensor(im).transpose(0, 2) for im in imagesRGB]).float()
     xRGB = torch.stack([xRGB[0:4, ...], xRGB[4:, ...]])
-    RF = Representation_flow(4).cuda()
+    RF = Representation_flow(4)
+    if cuda:
+        RF = RF.cuda()
+        xRGB = xRGB.cuda()
     print("Starting Representation flow")
     start = time.time()
-    f = RF(xRGB.cuda())
+    f = RF(xRGB)
     end = time.time()
     print(f"Elapsed time : {(end - start)} seconds")
 
@@ -37,10 +40,14 @@ x1[1, ...] = x[2:4, :, :]
 x2[0, ...] = x[1:3, :, :]
 x2[1, ...] = x[3:5, :, :]
 
-t = TVL1OF(num_iter=200, lambda_=0.02, verbose=False).cuda()
+t = TVL1OF(num_iter=200, lambda_=0.02, verbose=False)
+if cuda:
+    t = t.cuda()
+    x1 = x1.cuda()
+    x2 = x2.cuda()
 print("Starting optical flow")
 start = time.time()
-a = t(x1.cuda(), x2.cuda())
+a = t(x1, x2)
 end = time.time()
 print(f"Elapsed time : {(end - start)} seconds")
 # tv = a.data.cpu().numpy()
